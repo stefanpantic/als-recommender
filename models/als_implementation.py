@@ -1,6 +1,7 @@
 import numpy as np
 import scipy.sparse as sparse
 from scipy.sparse.linalg import spsolve
+from tqdm import tqdm
 
 
 def als_algorithm(dataset, regularization=0.1, alpha_parameter=40, iterations=10, factors=20, random_state=0):
@@ -45,12 +46,12 @@ def als_algorithm(dataset, regularization=0.1, alpha_parameter=40, iterations=10
     lambda_eye = regularization * sparse.eye(factors)
 
     # Begin iterations (solving user given fixed items and items given fixed users)
-    for iteration in range(iterations):
+    for _ in tqdm(range(iterations)):
         userTuser = user_matrix.T.dot(user_matrix)
         itemTitem = item_matrix.T.dot(item_matrix)
 
         # Solve users based on fixed items
-        for user in range(num_users):
+        for user in tqdm(range(num_users)):
             # Select confidence matrix row for given user
             confidence_row = confidence_matrix[user, :].toarray()
 
@@ -74,7 +75,7 @@ def als_algorithm(dataset, regularization=0.1, alpha_parameter=40, iterations=10
             user_matrix[user] = spsolve(itemTitem + itemTCuIitem + lambda_eye, itemTCuPu)
 
         # Solve items based on fixed users
-        for item in range(num_items):
+        for item in tqdm(range(num_items)):
             # Select confidence matrix row for given item
             confidence_row = confidence_matrix[:, item].T.toarray()
 
