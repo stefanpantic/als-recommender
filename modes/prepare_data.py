@@ -1,30 +1,31 @@
+import os
+import random
+
 import click
 import numpy as np
-import random
 import pandas as pd
 import scipy.sparse as sparse
 
 
 @click.command(name='prepare-data', help='Transform raw dataset into format used for training.')
-@click.option('--dataset', help='Path to ratings dataset.')
-@click.option('--test_percentage', help='Percentage of user-item interactions that will be used in test set.')
+@click.option('--dataset', required=True, help='Path to ratings dataset.')
+@click.option('--test_percentage', required=True, type=int,
+              help='Percentage of user-item interactions that will be used in test set.')
 @click.option('--seed', default=42, help='Random seed')
-@click.option('--train_path', help='Path to training dataset location.')
-@click.option('--test_path', help='Path to test dataset location.')
-@click.option('--mask_path', help='Path to location of masked user indices.')
+@click.option('--output_path', required=True, help='Path to output datasets.')
 def prepare_data(**options):
     """Takes original data, creates user-item sparse matrix and masks percentage of the original ratings for test set.
     Test set will contain all of the original ratings, and train set will replace the specified percentage of them with
     a zero in original rating matrix.
     """
     dataset = pd.read_csv(options['dataset'])
-    dataset = dataset.drop('timestamp')
+    dataset = dataset.drop('timestamp', axis=1)
     dataset['rating'] = dataset['rating'] * 2
 
     users = list(np.sort(dataset['userId'].unique()))
-    rows = dataset['userId'].astype('category', categories=users).cat.codes
+    rows = dataset.userId.astype('category').cat.codes
     movies = list(np.sort(dataset['movieId'].unique()))
-    columns = dataset['movieId'].astype('category', categories=movies).cat.codes
+    columns = dataset.movieId.astype('category').cat.codes
     ratings = sparse.csr_matrix((dataset['rating'], (rows, columns)), shape=(len(users), len(movies)))
 
     # Create binary preference test matrix
@@ -40,7 +41,7 @@ def prepare_data(**options):
     random.seed(options['seed'])
 
     # Get random samples for test masking
-    num_samples = int(np.ceil(options['test_percentage'] * len(nonzero_pairs)))
+    num_samples = int(np.ceil(options['test_percentage'] / 100 * len(nonzero_pairs)))
     samples = random.sample(nonzero_pairs, num_samples)
 
     # Mask test set in train matrix and remove zero user-item interactions from sparse matrix
@@ -49,9 +50,12 @@ def prepare_data(**options):
     train_set[user_inds, item_inds] = 0
     train_set.eliminate_zeros()
 
+    if not os.path.exists(options['output_path']):
+        os.makedirs(options['output_path'], exist_ok=True)
+
     # Save train and tests datasets
-    sparse.save_npz(options['train_path'], train_set)
-    sparse.save_npz(options['test_path'], test_set)
+    sparse.save_npz(os.path.join(options['output_path'], 'train.npz'), train_set)
+    sparse.save_npz(os.path.join(options['output_path'], 'test.npz'), test_set)
     # Save masked user indices
     user_inds = pd.DataFrame(data=list(set(user_inds)), columns=['userInds'])
-    user_inds.to_csv(options['mask_path'], index=False)
+    user_inds.to_csv(os.path.join(options['output_path'], 'mask.csv'), index=False)
