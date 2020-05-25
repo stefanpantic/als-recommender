@@ -1,4 +1,4 @@
-import implicit
+from implicit.als import AlternatingLeastSquares
 
 
 def get_implicit_als(dataset, regularization, alpha_parameter, iterations, factors, random_state):
@@ -23,10 +23,10 @@ def get_implicit_als(dataset, regularization, alpha_parameter, iterations, facto
     -------
         user_matrix, item_matrix: Matrices with feature vectors for users and items.
     """
-    user_matrix, item_matrix = implicit.alternating_least_squares((dataset * alpha_parameter).astype('double'),
-                                                                  factors=factors,
-                                                                  regularization=regularization,
-                                                                  iterations=iterations,
-                                                                  random_state=random_state)
+    model = AlternatingLeastSquares(factors=factors,
+                                    regularization=regularization,
+                                    iterations=iterations,
+                                    use_native=False)
+    model.fit((dataset * alpha_parameter).astype('double'))
 
-    return user_matrix, item_matrix
+    return model.item_factors, model.user_factors
