@@ -5,10 +5,13 @@ import click
 import numpy as np
 import pandas as pd
 import scipy.sparse as sparse
+import wget
 
 
 @click.command(name='prepare-data', help='Transform raw dataset into format used for training.')
 @click.option('--dataset', required=True, help='Path to ratings dataset.')
+@click.option('--dataset_percentage', default=20, help='Percentage of users to sample from full dataset.')
+@click.option('--download_path', help='Where to download dataset from (if specified).')
 @click.option('--test_percentage', required=True, type=int,
               help='Percentage of user-item interactions that will be used in test set.')
 @click.option('--seed', default=42, help='Random seed')
@@ -18,9 +21,30 @@ def prepare_data(**options):
     Test set will contain all of the original ratings, and train set will replace the specified percentage of them with
     a zero in original rating matrix.
     """
-    dataset = pd.read_csv(options['dataset'])
+    if options['download_path'] is not None:
+        if not os.path.exists(options['dataset']):
+            os.makedirs(options['dataset'], exist_ok=False)
+
+        wget.download(options['download_path'], out=options['dataset'])
+
+        from zipfile import ZipFile
+        _, file = options['download_path'].rsplit('/', 1)
+        _, filename = file.rsplit('.', 1)
+
+        with ZipFile(os.path.join(options['dataset'], file)) as zipobj:
+            zipobj.extractall(path=options['dataset'])
+
+        filepath = os.path.join(os.path.join(options['dataset'], filename), 'ratings.csv')
+    else:
+        filepath = os.path.join(options['dataset'], 'ratings.csv')
+
+    dataset = pd.read_csv(filepath)
     dataset = dataset.drop('timestamp', axis=1)
     dataset['rating'] = dataset['rating'] * 2
+
+    sample = random.sample(list(dataset['userId'].unique()),
+                           (len(dataset['userId'].unique()) * options['dataset_percentage']) // 100)
+    dataset = dataset.loc[dataset['userId'].isin(sample)]
 
     users = list(np.sort(dataset['userId'].unique()))
     rows = dataset.userId.astype('category').cat.codes

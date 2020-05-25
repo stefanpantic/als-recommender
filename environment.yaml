@@ -10,3 +10,4 @@ dependencies:
   - tqdm==4.46.0
   - pip:
       - implicit==0.4.2
+      - wget==3.2
