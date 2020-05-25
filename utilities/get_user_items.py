@@ -22,4 +22,5 @@ def get_user_items(user_id, train_matrix, user_list, item_list):
     user_ind = np.where(user_list == user_id)[0][0]
     items_ind = train_matrix[user_ind, :].nonzero()[1]
 
-    return item_list[items_ind]
+    return sorted(item_list[items_ind], reverse=True)
+
