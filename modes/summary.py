@@ -1,22 +1,19 @@
 import click
 import pandas as pd
 from scipy import sparse
-
+import numpy as np
 from utilities.auc import calculate_mean_auc
+import os
 
 
 @click.command(name='summary', help='Get recommender summary (AUC Score).')
-@click.option('--train_set', help='Path to train set.')
-@click.option('--test_set', help='Path to test set.')
+@click.option('--dataset_path', help='Path to datasets.')
 @click.option('--recommendations', help='Path to recommendations.')
-@click.option('--masked_users', help='Path to list of users masked for test set.')
 def summary(**options):
-    train_set = sparse.load_npz(options['train_set'])
-    test_set = sparse.load_npz(options['test_set'])
-
-    # TODO: Read recommendations
-    recommendations = None
-    masked_users = pd.read_csv(options['masked_users'])['userInds'].toarray()
+    train_set = sparse.load_npz(os.path.join(options['dataset_path'], 'train.npz'))
+    test_set = sparse.load_npz(os.path.join(options['dataset_path'], 'test.npz'))
+    masked_users = list(pd.read_csv(os.path.join(options['dataset_path'], 'mask.csv'))['userInds'])
+    recommendations = np.load(os.path.join(options['recommendations'], 'recommendations.npy'))
 
     mean_auc, mean_popular_auc = calculate_mean_auc(train_set=train_set,
                                                     test_set=test_set,
@@ -25,4 +22,3 @@ def summary(**options):
 
     print(f'Mean AUC value: {mean_auc}')
     print(f'Mean popular AUC value: {mean_popular_auc}')
-
